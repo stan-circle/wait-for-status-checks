@@ -67,6 +67,12 @@ function run() {
             ignore.push(context.job);
             const matchPattern = core.getInput('match_pattern') || undefined;
             const ignorePattern = core.getInput('ignore_pattern') || undefined;
+            // parse success conclusions
+            const successConclusionsInput = core.getInput('success_conclusions') || 'success,skipped';
+            const successConclusions = successConclusionsInput
+                .split(',')
+                .map(conclusion => conclusion.trim())
+                .filter(conclusion => conclusion.length > 0);
             const delaySeconds = parseInt(core.getInput('delay') || '0');
             yield (0, wait_1.wait)(delaySeconds * 1000);
             yield (0, poll_1.poll)({
@@ -77,6 +83,7 @@ function run() {
                 ignoreChecks: ignore,
                 matchPattern,
                 ignorePattern,
+                successConclusions,
                 // optional
                 intervalSeconds: parseInt(core.getInput('interval') || '10'),
                 timeoutSeconds: parseInt(core.getInput('timeout') || '3600')
@@ -159,12 +166,13 @@ const core = __importStar(__nccwpck_require__(7484));
 const wait_1 = __nccwpck_require__(6339);
 function poll(config) {
     return __awaiter(this, void 0, void 0, function* () {
-        const { client, owner, repo, ref, intervalSeconds, timeoutSeconds, ignoreChecks, matchPattern, ignorePattern } = config;
+        const { client, owner, repo, ref, intervalSeconds, timeoutSeconds, ignoreChecks, matchPattern, ignorePattern, successConclusions = ['success', 'skipped'] } = config;
         let elapsedSeconds = 0;
         core.info('Starting polling GitHub Check runs...');
         core.info(`timeout: ${timeoutSeconds} seconds`);
         core.info(`interval: ${intervalSeconds} seconds`);
         core.info(`ignore: ${JSON.stringify(ignoreChecks)}`);
+        core.info(`success conclusions: ${JSON.stringify(successConclusions)}`);
         if (matchPattern) {
             core.info(`match pattern: ${matchPattern}`);
         }
@@ -220,7 +228,7 @@ function poll(config) {
                     name: run.name,
                     status: run.status,
                     conclusion: run.conclusion
-                }));
+                }, successConclusions));
                 if (failed.length > 0) {
                     core.info('One or more watched check runs were not successful');
                     for (const run of failed) {
@@ -268,10 +276,10 @@ function filterLatestCheckRunResults(runs) {
         return acc;
     }, []);
 }
-function isFailure(run) {
+function isFailure(run, successConclusions) {
     if (run.status === 'completed') {
-        // all conclusions besides success or skipped are considered failures
-        return run.conclusion !== 'success' && run.conclusion !== 'skipped';
+        // check if the conclusion is in the list of success conclusions
+        return !run.conclusion || !successConclusions.includes(run.conclusion);
     }
     // run is still queued or pending
     return false;
