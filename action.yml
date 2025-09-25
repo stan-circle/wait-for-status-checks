@@ -20,6 +20,8 @@ inputs:
     description: 'Regex match GitHub checks that should be ignored'
   ignore:
     description: 'GitHub checks that should be ignored (default ignores the current job)'
+  success_conclusions:
+    description: 'Comma-separated list of conclusions to treat as successful (default: success,skipped)'
 runs:
   using: 'node20'
   main: 'dist/index.js'

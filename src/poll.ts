@@ -18,6 +18,7 @@ export interface Config {
 
   matchPattern?: string
   ignorePattern?: string
+  successConclusions?: string[]
 }
 
 export async function poll(config: Config): Promise<void> {
@@ -30,7 +31,8 @@ export async function poll(config: Config): Promise<void> {
     timeoutSeconds,
     ignoreChecks,
     matchPattern,
-    ignorePattern
+    ignorePattern,
+    successConclusions = ['success', 'skipped']
   } = config
   let elapsedSeconds = 0
 
@@ -38,6 +40,7 @@ export async function poll(config: Config): Promise<void> {
   core.info(`timeout: ${timeoutSeconds} seconds`)
   core.info(`interval: ${intervalSeconds} seconds`)
   core.info(`ignore: ${JSON.stringify(ignoreChecks)}`)
+  core.info(`success conclusions: ${JSON.stringify(successConclusions)}`)
 
   if (matchPattern) {
     core.info(`match pattern: ${matchPattern}`)
@@ -114,7 +117,7 @@ export async function poll(config: Config): Promise<void> {
           name: run.name,
           status: run.status,
           conclusion: run.conclusion
-        })
+        }, successConclusions)
       )
       if (failed.length > 0) {
         core.info('One or more watched check runs were not successful')
@@ -180,10 +183,10 @@ function filterLatestCheckRunResults(
   )
 }
 
-function isFailure(run: CheckRun): boolean {
+function isFailure(run: CheckRun, successConclusions: string[]): boolean {
   if (run.status === 'completed') {
-    // all conclusions besides success, skipped, or neutral are considered failures
-    return run.conclusion !== 'success' && run.conclusion !== 'skipped' && run.conclusion !== 'neutral'
+    // check if the conclusion is in the list of success conclusions
+    return !run.conclusion || !successConclusions.includes(run.conclusion)
   }
   // run is still queued or pending
   return false

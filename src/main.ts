@@ -21,6 +21,13 @@ async function run(): Promise<void> {
     const matchPattern = core.getInput('match_pattern') || undefined
     const ignorePattern = core.getInput('ignore_pattern') || undefined
 
+    // parse success conclusions
+    const successConclusionsInput = core.getInput('success_conclusions') || 'success,skipped'
+    const successConclusions = successConclusionsInput
+      .split(',')
+      .map(conclusion => conclusion.trim())
+      .filter(conclusion => conclusion.length > 0)
+
     const delaySeconds = parseInt(core.getInput('delay') || '0')
     await wait(delaySeconds * 1000)
 
@@ -33,6 +40,7 @@ async function run(): Promise<void> {
 
       matchPattern,
       ignorePattern,
+      successConclusions,
 
       // optional
       intervalSeconds: parseInt(core.getInput('interval') || '10'),
